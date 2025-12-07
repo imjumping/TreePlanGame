@@ -12,7 +12,6 @@ import sounddevice as sd
 import numpy as np
 from PySide6 import QtCore, QtWidgets, QtGui
 
-# 全局音频响度
 result_sound = 0
 
 
@@ -90,9 +89,6 @@ def bubble_sort_leaderboard(board):
     return board
 
 
-# ======================
-# 自定义流式布局（保持不变）
-# ======================
 class FlowLayout(QtWidgets.QLayout):
     def __init__(self, parent=None, margin=0, spacing=-1):
         super().__init__(parent)
@@ -167,9 +163,6 @@ class FlowLayout(QtWidgets.QLayout):
         return y + line_height - rect.y()
 
 
-# ======================
-# 屏幕键盘（新增）
-# ======================
 class VirtualKeyboard(QtWidgets.QDialog):
     def __init__(self, parent=None, title="输入数字"):
         super().__init__(parent)
@@ -371,11 +364,16 @@ class TreeManager:
             board = bubble_sort_leaderboard(board)
             board = board[:30]
             save_leaderboard(board)
+    def get_current_score(self):
+        """返回当前总分数（以苗为单位）"""
+        return (
+            self.seedlings * 1 +
+            self.trees * self.merge_count +
+            self.giants * (self.merge_count ** 2)
+        )
 
 
-# ======================
-# 设置窗口（使用虚拟 SpinBox）
-# ======================
+# 设置窗口
 class SettingsDialog(QtWidgets.QDialog):
     def __init__(self, tree_manager, parent=None):
         super().__init__(parent)
@@ -420,13 +418,10 @@ class SettingsDialog(QtWidgets.QDialog):
         self.accept()
 
 
-# ======================
-# 主窗口（优化树显示逻辑）
-# ======================
 class LoudnessMonitor(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("中 暑 游 戏")
+        self.setWindowTitle("种 树 游 戏")
         self.resize(440, 400)
 
         self.tree_manager = TreeManager()
@@ -437,8 +432,8 @@ class LoudnessMonitor(QtWidgets.QWidget):
         topLayout = QtWidgets.QHBoxLayout()
 
         infoLayout = QtWidgets.QVBoxLayout()
-        self.zuozhelabel = QtWidgets.QLabel("侯皓铭 - 制作")
-        self.classlabel = QtWidgets.QLabel("使用PySide6开发")
+        self.zuozhelabel = QtWidgets.QLabel("侯皓铭 - 制作 （GitHub：imjumping）")
+        self.classlabel = QtWidgets.QLabel("Apache license 2.0协议开源")
         self.zuozhelabel.setStyleSheet("font-size: 12px; color: #555;")
         self.classlabel.setStyleSheet("font-size: 12px; color: #555;")
         infoLayout.addWidget(self.zuozhelabel)
@@ -475,6 +470,11 @@ class LoudnessMonitor(QtWidgets.QWidget):
         self.titleLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.titleLabel.setStyleSheet("font-size: 22px; font-weight: bold; margin: 8px 0;")
 
+        # ===== 分数显示 =====
+        self.scoreLabel = QtWidgets.QLabel("当前分数：0")
+        self.scoreLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.scoreLabel.setStyleSheet("font-size: 16px; color: #d32f2f; margin: 4px 0;")
+
         # ===== 进度条 =====
         self.progressBar = QtWidgets.QProgressBar()
         self.progressBar.setRange(0, 100)
@@ -491,7 +491,7 @@ class LoudnessMonitor(QtWidgets.QWidget):
         self.treeLayout = FlowLayout(self.treeDisplay)
 
         # ===== 按钮 =====
-        self.rankButton = QtWidgets.QPushButton("🏆 查看排行榜")
+        self.rankButton = QtWidgets.QPushButton(" 查看排行榜")
         self.rankButton.clicked.connect(self.show_leaderboard)
 
         # ===== 主布局 =====
@@ -499,9 +499,11 @@ class LoudnessMonitor(QtWidgets.QWidget):
         mainLayout.addLayout(topLayout)
         mainLayout.addWidget(self.titleLabel)
         mainLayout.addWidget(self.progressBar)
-        mainLayout.addWidget(QtWidgets.QLabel("你的小树林："))
+        mainLayout.addWidget(QtWidgets.QLabel("R a i n f o r e s t："))
         mainLayout.addWidget(self.treeDisplay)
         mainLayout.addWidget(self.rankButton)
+        mainLayout.addWidget(self.scoreLabel)
+
         mainLayout.addStretch()
         self.setLayout(mainLayout)
 
@@ -555,6 +557,9 @@ class LoudnessMonitor(QtWidgets.QWidget):
                 label = QtWidgets.QLabel(icon)
                 label.setStyleSheet("font-size: 24px; margin: 2px;")
                 self.treeLayout.addWidget(label)
+        # 更新分数显示
+        current_score = self.tree_manager.get_current_score()
+        self.scoreLabel.setText(f"当前分数：{current_score}")
 
     def save_current_progress(self):
         data = self.tree_manager.save_to_data()
