@@ -2,7 +2,7 @@
 Apache license 2.0
 Version 2.0, January 2004
 Read https://www.apache.org/licenses/LICENSE-2.0
-Full License is /LICENCE
+Full License is in /LICENCE file
 '''
 import sys
 import os
@@ -11,8 +11,14 @@ import datetime
 import sounddevice as sd
 import numpy as np
 from PySide6 import QtCore, QtWidgets, QtGui
+from plyer import notification
 result_sound = 0
-
+notification.notify(
+    title='中暑了',
+    message='好了，闭嘴！',
+    app_name='Python3',
+    timeout=5,
+)
 def audio_callback(indata, frames, time_info, status):
     global result_sound
     if status:
@@ -396,7 +402,7 @@ class SettingsDialog(QtWidgets.QDialog):
         low_label = QtWidgets.QLabel("安静阈值:")
         self.low_value_label = QtWidgets.QLabel(str(tree_manager.threshold_low))
         self.low_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.low_slider.setRange(1, 200)
+        self.low_slider.setRange(0, 600)
         self.low_slider.setValue(tree_manager.threshold_low)
         self.low_slider.valueChanged.connect(
             lambda v: (setattr(tree_manager, 'threshold_low', v),
@@ -410,7 +416,7 @@ class SettingsDialog(QtWidgets.QDialog):
         high_label = QtWidgets.QLabel("朗读阈值:")
         self.high_value_label = QtWidgets.QLabel(str(tree_manager.threshold_high))
         self.high_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.high_slider.setRange(1, 200)
+        self.high_slider.setRange(0, 600)
         self.high_slider.setValue(tree_manager.threshold_high)
         self.high_slider.valueChanged.connect(
             lambda v: (setattr(tree_manager, 'threshold_high', v),
@@ -424,7 +430,7 @@ class SettingsDialog(QtWidgets.QDialog):
         speed_label = QtWidgets.QLabel("增长速度:")
         self.speed_value_label = QtWidgets.QLabel(f"{tree_manager.growth_speed:.1f}")
         self.speed_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.speed_slider.setRange(10, 500)  # 对应1.0-50.0
+        self.speed_slider.setRange(10, 10000)  # 对应1.0-50.0
         self.speed_slider.setValue(int(tree_manager.growth_speed * 10))
         self.speed_slider.valueChanged.connect(
             lambda v: (setattr(tree_manager, 'growth_speed', v/10.0),
@@ -628,7 +634,7 @@ class LoudnessMonitor(QtWidgets.QWidget):
         scoreLayout.addStretch()
 
         # ===== 树显示区 =====
-        tree_label = QtWidgets.QLabel("🌳 今 日 森 林 🌳")
+        tree_label = QtWidgets.QLabel("R a i n f o r e s t")
         tree_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #4CAF50; margin-top: 10px;")
 
         self.treeDisplay = QtWidgets.QWidget()
@@ -686,7 +692,7 @@ class LoudnessMonitor(QtWidgets.QWidget):
         global result_sound
 
         # 更新标题显示
-        mode_text = "（早读模式）" if self.tree_manager.morning_mode else "（安静模式）"
+        mode_text = "（早毒模式）" if self.tree_manager.morning_mode else "（静以修身）"
         threshold = self.tree_manager.threshold_high if self.tree_manager.morning_mode else self.tree_manager.threshold_low
         self.titleLabel.setText(f"当前音量: {result_sound}  目标: {'>' if self.tree_manager.morning_mode else '<'}{threshold} {mode_text}")
 
@@ -834,7 +840,7 @@ class LoudnessMonitor(QtWidgets.QWidget):
 # 启动
 # ======================
 if __name__ == "__main__":
-    print("种树游戏启动中...")
+    print("log: TreePlanGay is starting... （细节gay）")
 
     app = QtWidgets.QApplication(sys.argv)
 
