@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="151581de-7ee9-47e5-a04f-94d6ef48f52b" name="更改" comment="UPDATE UI">
+    <list default="true" id="151581de-7ee9-47e5-a04f-94d6ef48f52b" name="更改" comment="更新了一些gay（？）">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -58,7 +58,15 @@
       <option name="project" value="LOCAL" />
       <updated>1766841807283</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="更新了一些gay（？）">
+      <option name="closed" value="true" />
+      <created>1766843670283</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1766843670283</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -74,6 +82,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="UPDATE UI" />
-    <option name="LAST_COMMIT_MESSAGE" value="UPDATE UI" />
+    <MESSAGE value="更新了一些gay（？）" />
+    <option name="LAST_COMMIT_MESSAGE" value="更新了一些gay（？）" />
   </component>
 </project>

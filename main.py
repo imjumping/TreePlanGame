@@ -223,8 +223,8 @@ class FlowLayout(QtWidgets.QLayout):
 class TreeManager:
     def __init__(self):
         self.morning_mode = False
-        self.threshold_low = 35
-        self.threshold_high = 50
+        self.threshold_low = 60
+        self.threshold_high = 60
         self.growth_speed = 25.0  # %/秒
         self.merge_count = 10
 
@@ -444,7 +444,7 @@ class SettingsDialog(QtWidgets.QDialog):
         merge_label = QtWidgets.QLabel("合并数量:")
         self.merge_value_label = QtWidgets.QLabel(str(tree_manager.merge_count))
         self.merge_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.merge_slider.setRange(2, 10)
+        self.merge_slider.setRange(1, 1000)
         self.merge_slider.setValue(tree_manager.merge_count)
         self.merge_slider.valueChanged.connect(
             lambda v: (setattr(tree_manager, 'merge_count', v),
