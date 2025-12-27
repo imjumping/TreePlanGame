@@ -1,1 +1,1 @@
-PySide6>=6.5.0sounddevice>=0.4.6numpy>=1.24.0plyer>=2.1.0python-dateutil>=2.8.2
+PySide6>=6.5.0sounddevice>=0.4.6numpy>=1.24.0plyer>=2.1.0# 好吧 还是不保证完全正确
