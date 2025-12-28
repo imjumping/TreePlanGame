@@ -11,14 +11,7 @@ import datetime
 import sounddevice as sd
 import numpy as np
 from PySide6 import QtCore, QtWidgets, QtGui
-from plyer import notification
 result_sound = 0
-notification.notify(
-    title='中暑了',
-    message='好了，闭嘴！',
-    app_name='Python3',
-    timeout=5,
-)
 def audio_callback(indata, frames, time_info, status):
     global result_sound
     if status:
