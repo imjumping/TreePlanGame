@@ -11,7 +11,12 @@ import datetime
 import sounddevice as sd
 import numpy as np
 from PySide6 import QtCore, QtWidgets, QtGui
+import platform
+import tempfile
+from pathlib import Path
+
 result_sound = 0
+
 def audio_callback(indata, frames, time_info, status):
     global result_sound
     if status:
@@ -20,60 +25,142 @@ def audio_callback(indata, frames, time_info, status):
     loudness = int(rms * 1000)
     result_sound = loudness
 
-
 def start_microphone_monitor():
-    stream = sd.InputStream(
-        callback=audio_callback,
-        channels=1,
-        samplerate=16000,
-        blocksize=512,
-        dtype='float32'
-    )
-    stream.start()
-    return stream
+    try:
+        # 获取默认输入设备信息
+        default_input = sd.query_devices(kind='input')
+        print(f"Using audio device: {default_input['name']}")
 
-# 数据路径
-APP_NAME = "PlanTree"
-APPDATA_PATH = os.path.join(os.getenv('APPDATA'), APP_NAME)
-os.makedirs(APPDATA_PATH, exist_ok=True)
+        stream = sd.InputStream(
+            callback=audio_callback,
+            channels=1,
+            samplerate=16000,
+            blocksize=512,
+            dtype='float32'
+        )
+        stream.start()
+        return stream
+    except Exception as e:
+        print(f"Audio initialization error: {e}")
+        # 返回一个模拟的stream对象，避免程序崩溃
+        class MockStream:
+            def __init__(self): pass
+            def start(self): pass
+            def stop(self): pass
+            def close(self): pass
+        return MockStream()
+
+# ======================
+# POSIX兼容的数据路径处理
+# ======================
+def get_app_data_path():
+    """获取跨平台的应用数据目录"""
+    system = platform.system()
+
+    if system == "Windows":
+        # Windows: APPDATA
+        base_path = os.getenv('APPDATA', os.path.expanduser('~'))
+        app_data_path = os.path.join(base_path, "PlanTree")
+
+    elif system == "Linux":
+        # Linux: 遵循XDG规范
+        xdg_data_home = os.getenv('XDG_DATA_HOME')
+        if xdg_data_home:
+            base_path = xdg_data_home
+        else:
+            base_path = os.path.join(os.path.expanduser('~'), '.local', 'share')
+        app_data_path = os.path.join(base_path, "plantree")
+
+    elif system == "Darwin":  # macOS
+        base_path = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support')
+        app_data_path = os.path.join(base_path, "PlanTree")
+
+    else:  # 其他Unix-like系统
+        base_path = os.path.expanduser('~')
+        app_data_path = os.path.join(base_path, ".plantree")
+
+    # 创建目录（递归创建）
+    Path(app_data_path).mkdir(parents=True, exist_ok=True)
+
+    # 设置适当的权限（仅限Unix-like系统）
+    if system != "Windows":
+        try:
+            os.chmod(app_data_path, 0o755)  # rwxr-xr-x
+        except:
+            pass
+
+    return app_data_path
+
+# 初始化数据路径
+APPDATA_PATH = get_app_data_path()
 SAVE_FILE = os.path.join(APPDATA_PATH, "progress.json")
 LEADERBOARD_FILE = os.path.join(APPDATA_PATH, "leaderboard.json")
-DAILY_PROGRESS_FILE = os.path.join(APPDATA_PATH, "daily_progress.json")  # 新增：每日独立进度
-
+DAILY_PROGRESS_FILE = os.path.join(APPDATA_PATH, "daily_progress.json")
 
 def load_progress():
     """加载主进度（永久积累）"""
-    if os.path.exists(SAVE_FILE):
-        try:
-            with open(SAVE_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            pass
-    return {
-        "total_seedlings": 0,
-        "total_trees": 0,
-        "total_giants": 0,
-        "merge_count": 10
-    }
+    try:
+        with open(SAVE_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
 
+            # 向后兼容性检查
+            if "merge_count" not in data:
+                data["merge_count"] = 10
+            if "total_seedlings" not in data:
+                data["total_seedlings"] = 0
+            if "total_trees" not in data:
+                data["total_trees"] = 0
+            if "total_giants" not in data:
+                data["total_giants"] = 0
+
+            return data
+    except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+        print(f"Loading progress failed: {e}, using defaults")
+        return {
+            "total_seedlings": 0,
+            "total_trees": 0,
+            "total_giants": 0,
+            "merge_count": 10
+        }
 
 def save_progress(data):
-    with open(SAVE_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """保存主进度"""
+    try:
+        # 确保目录存在
+        Path(APPDATA_PATH).mkdir(parents=True, exist_ok=True)
 
+        # 原子写入（使用临时文件）
+        temp_file = SAVE_FILE + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8', errors='replace') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        # POSIX兼容的原子重命名
+        os.replace(temp_file, SAVE_FILE)
+
+        # 设置适当的文件权限（仅限Unix-like系统）
+        if platform.system() != "Windows":
+            try:
+                os.chmod(SAVE_FILE, 0o644)  # rw-r--r--
+            except:
+                pass
+
+    except Exception as e:
+        print(f"Saving progress failed: {e}")
 
 def load_daily_progress():
     """加载每日独立进度"""
     today = str(datetime.date.today())
-    if os.path.exists(DAILY_PROGRESS_FILE):
-        try:
-            with open(DAILY_PROGRESS_FILE, 'r', encoding='utf-8') as f:
-                all_data = json.load(f)
-                # 获取今天的数据，如果不存在则创建新的
-                if today in all_data:
-                    return all_data[today]
-        except:
-            pass
+
+    try:
+        with open(DAILY_PROGRESS_FILE, 'r', encoding='utf-8') as f:
+            all_data = json.load(f)
+
+            # 获取今天的数据，如果不存在则创建新的
+            if today in all_data:
+                return all_data[today]
+    except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+        print(f"Loading daily progress failed: {e}")
+
     # 返回今天的初始数据
     return {
         "date": today,
@@ -83,52 +170,85 @@ def load_daily_progress():
         "giants": 0
     }
 
-
 def save_daily_progress(data):
     """保存每日进度"""
-    today = str(datetime.date.today())
-    all_data = {}
-    if os.path.exists(DAILY_PROGRESS_FILE):
+    try:
+        today = str(datetime.date.today())
+        all_data = {}
+
+        # 读取现有数据
         try:
             with open(DAILY_PROGRESS_FILE, 'r', encoding='utf-8') as f:
                 all_data = json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             pass
 
-    # 只保留最近7天的数据
-    all_data[today] = data
-    # 清理旧数据
-    today_date = datetime.date.today()
-    to_delete = []
-    for date_str in list(all_data.keys()):
-        try:
-            date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-            if (today_date - date_obj).days > 7:
+        # 更新今天的数据
+        all_data[today] = data
+
+        # 清理旧数据（保留最近7天）
+        today_date = datetime.date.today()
+        to_delete = []
+        for date_str in list(all_data.keys()):
+            try:
+                date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+                if (today_date - date_obj).days > 7:
+                    to_delete.append(date_str)
+            except ValueError:
                 to_delete.append(date_str)
-        except:
-            to_delete.append(date_str)
 
-    for key in to_delete:
-        all_data.pop(key, None)
+        for key in to_delete:
+            all_data.pop(key, None)
 
-    with open(DAILY_PROGRESS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(all_data, f, ensure_ascii=False, indent=2)
+        # 确保目录存在
+        Path(APPDATA_PATH).mkdir(parents=True, exist_ok=True)
 
+        # 原子写入
+        temp_file = DAILY_PROGRESS_FILE + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8', errors='replace') as f:
+            json.dump(all_data, f, ensure_ascii=False, indent=2)
+
+        os.replace(temp_file, DAILY_PROGRESS_FILE)
+
+        # 设置文件权限（仅限Unix-like系统）
+        if platform.system() != "Windows":
+            try:
+                os.chmod(DAILY_PROGRESS_FILE, 0o644)
+            except:
+                pass
+
+    except Exception as e:
+        print(f"Saving daily progress failed: {e}")
 
 def load_leaderboard():
-    if os.path.exists(LEADERBOARD_FILE):
-        try:
-            with open(LEADERBOARD_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            pass
-    return []
-
+    try:
+        with open(LEADERBOARD_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+        print(f"Loading leaderboard failed: {e}")
+        return []
 
 def save_leaderboard(board):
-    with open(LEADERBOARD_FILE, 'w', encoding='utf-8') as f:
-        json.dump(board, f, ensure_ascii=False, indent=2)
+    try:
+        # 确保目录存在
+        Path(APPDATA_PATH).mkdir(parents=True, exist_ok=True)
 
+        # 原子写入
+        temp_file = LEADERBOARD_FILE + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8', errors='replace') as f:
+            json.dump(board, f, ensure_ascii=False, indent=2)
+
+        os.replace(temp_file, LEADERBOARD_FILE)
+
+        # 设置文件权限
+        if platform.system() != "Windows":
+            try:
+                os.chmod(LEADERBOARD_FILE, 0o644)
+            except:
+                pass
+
+    except Exception as e:
+        print(f"Saving leaderboard failed: {e}")
 
 def bubble_sort_leaderboard(board):
     n = len(board)
@@ -137,7 +257,6 @@ def bubble_sort_leaderboard(board):
             if board[j]["score"] < board[j + 1]["score"]:
                 board[j], board[j + 1] = board[j + 1], board[j]
     return board
-
 
 class FlowLayout(QtWidgets.QLayout):
     def __init__(self, parent=None, margin=0, spacing=-1):
@@ -211,7 +330,6 @@ class FlowLayout(QtWidgets.QLayout):
             line_height = max(line_height, item.sizeHint().height())
 
         return y + line_height - rect.y()
-
 
 class TreeManager:
     def __init__(self):
@@ -353,7 +471,6 @@ class TreeManager:
             self.total_trees * self.merge_count +
             self.total_giants * (self.merge_count ** 2)
         )
-
 
 class SettingsDialog(QtWidgets.QDialog):
     def __init__(self, tree_manager, parent=None):
@@ -503,7 +620,6 @@ class SettingsDialog(QtWidgets.QDialog):
 
         layout.addLayout(btn_layout)
         self.setLayout(layout)
-
 
 class LoudnessMonitor(QtWidgets.QWidget):
     def __init__(self):
@@ -757,7 +873,7 @@ class LoudnessMonitor(QtWidgets.QWidget):
     def show_leaderboard(self):
         board = load_leaderboard()
         if not board:
-            QtWidgets.QMessageBox.information(self, "排行榜", "应用数据目录下没有JSON文件")
+            QtWidgets.QMessageBox.information(self, "排行榜", "还没有排行榜数据")
             return
 
         # 创建暗色风格的对话框
@@ -793,7 +909,7 @@ class LoudnessMonitor(QtWidgets.QWidget):
         msg_box.exec()
 
     def reset_for_new_day(self):
-        """手动重置当日进度（主要用于测试）"""
+        """手动重置当日进度"""
         reply = QtWidgets.QMessageBox.question(
             self, '饿啊~',
             '警告！今天的进度将彻底清零，继续？',
@@ -824,16 +940,25 @@ class LoudnessMonitor(QtWidgets.QWidget):
         self.tree_manager.submit_daily_score()
         self.save_current_progress()
         self.timer.stop()
-        self.stream.stop()
-        self.stream.close()
+        if hasattr(self.stream, 'stop') and callable(self.stream.stop):
+            self.stream.stop()
+        if hasattr(self.stream, 'close') and callable(self.stream.close):
+            self.stream.close()
         event.accept()
-
 
 # ======================
 # 启动
 # ======================
 if __name__ == "__main__":
-    print("log: TreePlanGay is starting... （细节gay）")
+    print("Starting PlanTree...")
+
+    # 检查是否在Linux上运行
+    if platform.system() == "Linux":
+        print(f"Running on Linux, data directory: {APPDATA_PATH}")
+
+    # 设置Qt应用ID（Wayland兼容）
+    if platform.system() == "Linux":
+        os.environ["QT_QPA_PLATFORM"] = "xcb"  # 强制使用XCB，更好的兼容性
 
     app = QtWidgets.QApplication(sys.argv)
 
@@ -855,6 +980,14 @@ if __name__ == "__main__":
     dark_palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtGui.QColor(0, 0, 0))
     app.setPalette(dark_palette)
 
+    # 设置应用程序信息
+    app.setApplicationName("PlanTree")
+    app.setOrganizationName("imjumping")
+
     window = LoudnessMonitor()
     window.show()
-    sys.exit(app.exec())
+
+    try:
+        sys.exit(app.exec())
+    except KeyboardInterrupt:
+        print("\nApplication terminated by user")
