@@ -239,7 +239,7 @@ Using audio device: Built-in Audio Analog Stereo
 
 ---
 
-*版本：v2.0 | 更新日期：2024年1月*
+*版本：v2.0 | 更新日期：2026年1月*
 
 ## 🌐 相关链接
 
